@@ -157,7 +157,8 @@ func (e entry) printOut(w io.Writer, displayTS bool) error {
 			err = writeHelper(space, w, err)
 			err = writeHelper([]byte(k), w, err)
 			err = writeHelper(equals, w, err)
-			err = writeHelper([]byte(fmt.Sprint(v)), w, err)
+			vstr := fmt.Sprint(v)
+			err = writeHelper([]byte(fmt.Sprintf("%q", vstr)), w, err)
 		}
 	}
 	err = writeHelper(newline, w, err)
