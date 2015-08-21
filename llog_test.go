@@ -2,6 +2,7 @@ package llog
 
 import (
 	"bytes"
+	"io/ioutil"
 	"regexp"
 	. "testing"
 	"time"
@@ -80,4 +81,11 @@ func TestEntryPrintOut(t *T) {
 		"bar": "a",
 	}
 	assertEntry("INFO -- this is a test -- (foo|bar)=a (foo|bar)=a", e)
+}
+
+func BenchmarkLLog(b *B) {
+	Out = ioutil.Discard
+	for n := 0; n < b.N; n++ {
+		Info("This is a generic message", KV{"foo": "bar"})
+	}
 }
