@@ -115,9 +115,10 @@ func SetLevelFromString(ls string) error {
 type KV map[string]interface{}
 
 type entry struct {
-	level Level
-	msg   string
-	kv    KV
+	level   Level
+	msg     string
+	kv      KV
+	blockCh chan struct{} // can be nil
 }
 
 var (
@@ -156,7 +157,8 @@ func (e entry) printOut(w io.Writer, displayTS bool) error {
 			err = writeHelper(space, w, err)
 			err = writeHelper([]byte(k), w, err)
 			err = writeHelper(equals, w, err)
-			err = writeHelper([]byte(fmt.Sprint(v)), w, err)
+			vstr := fmt.Sprint(v)
+			err = writeHelper([]byte(fmt.Sprintf("%q", vstr)), w, err)
 		}
 	}
 	err = writeHelper(newline, w, err)
@@ -205,7 +207,10 @@ func init() {
 				} else if fo, ok := Out.(flusher); ok {
 					fo.Flush()
 				}
-				os.Exit(1)
+			}
+
+			if e.blockCh != nil {
+				close(e.blockCh)
 			}
 		}
 	}()
@@ -218,38 +223,42 @@ func kvNormalize(kv []KV) KV {
 	return nil
 }
 
-func logEntry(l Level, msg string, kv []KV) {
+func logEntry(l Level, msg string, kv []KV, blockCh chan struct{}) {
 	if l >= GetLevel() {
 		entryCh <- entry{
-			level: l,
-			msg:   msg,
-			kv:    kvNormalize(kv),
+			level:   l,
+			msg:     msg,
+			kv:      kvNormalize(kv),
+			blockCh: blockCh,
 		}
 	}
 }
 
 // Debug writes a Debug message to Out, with an optional set of key/value pairs
 func Debug(msg string, kv ...KV) {
-	logEntry(DebugLevel, msg, kv)
+	logEntry(DebugLevel, msg, kv, nil)
 }
 
 // Info writes an Info message to Out, with an optional set of key/value pairs
 func Info(msg string, kv ...KV) {
-	logEntry(InfoLevel, msg, kv)
+	logEntry(InfoLevel, msg, kv, nil)
 }
 
 // Warn writes a Warn message to Out, with an optional set of key/value pairs
 func Warn(msg string, kv ...KV) {
-	logEntry(WarnLevel, msg, kv)
+	logEntry(WarnLevel, msg, kv, nil)
 }
 
 // Error writes an Error message to Out, with an optional set of key/value pairs
 func Error(msg string, kv ...KV) {
-	logEntry(ErrorLevel, msg, kv)
+	logEntry(ErrorLevel, msg, kv, nil)
 }
 
 // Fatal writes a Fatal message to Out, with an optional set of key/value pairs.
 // Once written the process will be exited with an exit code of 1
 func Fatal(msg string, kv ...KV) {
-	logEntry(FatalLevel, msg, kv)
+	blockCh := make(chan struct{})
+	logEntry(FatalLevel, msg, kv, blockCh)
+	<-blockCh
+	os.Exit(1)
 }

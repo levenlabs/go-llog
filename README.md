@@ -36,5 +36,5 @@ These will output:
 
 ```
 ~ INFO -- Here's a generic log message!
-~ ERROR -- an error happened -- userID=1111 err=some-error sky=blue
+~ ERROR -- an error happened -- userID="1111" err="some error" sky="blue"
 ```
