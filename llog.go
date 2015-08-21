@@ -234,6 +234,10 @@ func logEntry(l Level, msg string, kv []KV, blockCh chan struct{}) {
 	}
 }
 
+// LogFunc is the function signature used by the different log functions (Debug,
+// Info, Warn, Error, and Fatal). It's useful for writing wrapper functions
+type LogFunc func(string, ...KV)
+
 // Debug writes a Debug message to Out, with an optional set of key/value pairs
 func Debug(msg string, kv ...KV) {
 	logEntry(DebugLevel, msg, kv, nil)
