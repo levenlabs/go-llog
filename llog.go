@@ -218,7 +218,11 @@ func init() {
 
 func kvNormalize(kv []KV) KV {
 	if len(kv) > 0 {
-		return kv[0]
+		kvCopy := make(KV, len(kv[0]))
+		for k, v := range kv[0] {
+			kvCopy[k] = v
+		}
+		return kvCopy
 	}
 	return nil
 }
