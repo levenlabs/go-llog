@@ -40,7 +40,7 @@ func TestLLog(t *T) {
 	Error("buz", KV{"a": "b"})
 	time.Sleep(100 * time.Millisecond)
 	assertOut("~ WARN -- baz\n")
-	assertOut("~ ERROR -- buz -- a=b\n")
+	assertOut("~ ERROR -- buz -- a=\"b\"\n")
 }
 
 func TestEntryPrintOut(t *T) {
@@ -74,13 +74,13 @@ func TestEntryPrintOut(t *T) {
 	e.kv = KV{
 		"foo": "a",
 	}
-	assertEntry("INFO -- this is a test -- foo=a", e)
+	assertEntry("INFO -- this is a test -- foo=\"a\"", e)
 
 	e.kv = KV{
 		"foo": "a",
 		"bar": "a",
 	}
-	assertEntry("INFO -- this is a test -- (foo|bar)=a (foo|bar)=a", e)
+	assertEntry("INFO -- this is a test -- (foo|bar)=\"a\" (foo|bar)=\"a\"", e)
 }
 
 func BenchmarkLLog(b *B) {
