@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -158,7 +159,7 @@ func (e entry) printOut(w io.Writer, displayTS bool) error {
 			err = writeHelper([]byte(k), w, err)
 			err = writeHelper(equals, w, err)
 			vstr := fmt.Sprint(v)
-			err = writeHelper([]byte(fmt.Sprintf("%q", vstr)), w, err)
+			err = writeHelper([]byte(strconv.QuoteToASCII(vstr)), w, err)
 		}
 	}
 	err = writeHelper(newline, w, err)
