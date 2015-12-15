@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -115,10 +116,38 @@ func SetLevelFromString(ls string) error {
 // key/value pairs which can be different for every entry.
 type KV map[string]interface{}
 
+type kvE struct {
+	K string
+	V interface{}
+}
+
+type kvL []kvE
+
+func (l kvL) Len() int {
+	return len(l)
+}
+
+func (l kvL) Less(i, j int) bool {
+	return l[i].K < l[j].K
+}
+
+func (l kvL) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
+
+func kvTo(kv KV) kvL {
+	kvl := make(kvL, 0, len(kv))
+	for k, v := range kv {
+		kvl = append(kvl, kvE{K: k, V: v})
+	}
+	sort.Sort(kvl)
+	return kvl
+}
+
 type entry struct {
 	level   Level
 	msg     string
-	kv      KV
+	kv      kvL
 	blockCh chan struct{} // can be nil
 }
 
@@ -154,11 +183,11 @@ func (e entry) printOut(w io.Writer, displayTS bool) error {
 	err = writeHelper([]byte(e.msg), w, err)
 	if len(e.kv) > 0 {
 		err = writeHelper(separator, w, err)
-		for k, v := range e.kv {
+		for _, kve := range e.kv {
 			err = writeHelper(space, w, err)
-			err = writeHelper([]byte(k), w, err)
+			err = writeHelper([]byte(kve.K), w, err)
 			err = writeHelper(equals, w, err)
-			vstr := fmt.Sprint(v)
+			vstr := fmt.Sprint(kve.V)
 			err = writeHelper([]byte(strconv.QuoteToASCII(vstr)), w, err)
 		}
 	}
@@ -188,9 +217,9 @@ func init() {
 				erre := entry{
 					level: ErrorLevel,
 					msg:   "Could not write to error Out",
-					kv: KV{
+					kv: kvTo(KV{
 						"err": err,
-					},
+					}),
 				}
 				erre.printOut(defaultOut, DisplayTimestamp)
 				e.printOut(defaultOut, DisplayTimestamp)
@@ -217,13 +246,9 @@ func init() {
 	}()
 }
 
-func kvNormalize(kv []KV) KV {
+func kvNormalize(kv []KV) kvL {
 	if len(kv) > 0 {
-		kvCopy := make(KV, len(kv[0]))
-		for k, v := range kv[0] {
-			kvCopy[k] = v
-		}
-		return kvCopy
+		return kvTo(kv[0])
 	}
 	return nil
 }
