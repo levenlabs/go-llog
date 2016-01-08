@@ -188,7 +188,13 @@ func (e entry) printOut(w io.Writer, displayTS bool) error {
 			err = writeHelper([]byte(kve.K), w, err)
 			err = writeHelper(equals, w, err)
 			vstr := fmt.Sprint(kve.V)
-			err = writeHelper([]byte(strconv.QuoteToASCII(vstr)), w, err)
+			// TODO this is only here because logstash is dumb and doesn't
+			// properly handle escaped quotes. Once
+			// https://github.com/elastic/logstash/issues/1645
+			// gets figured out this Replace can be removed
+			vstr = strings.Replace(vstr, `"`, `'`, -1)
+			vstr = strconv.QuoteToASCII(vstr)
+			err = writeHelper([]byte(vstr), w, err)
 		}
 	}
 	err = writeHelper(newline, w, err)
