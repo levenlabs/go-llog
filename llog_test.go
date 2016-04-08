@@ -11,6 +11,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestKV(t *T) {
+	var kv KV
+	assert.NotNil(t, kv.Copy())
+	assert.Empty(t, kv.Copy())
+
+	kv = KV{"foo": "a"}
+	kv2 := kv.Copy()
+	kv["bar"] = "b"
+	kv2["bar"] = "bb"
+	assert.Equal(t, KV{"foo": "a", "bar": "b"}, kv)
+	assert.Equal(t, KV{"foo": "a", "bar": "bb"}, kv2)
+
+	kv = KV{"foo": "a"}
+	kv2 = kv.Set("bar", "wat")
+	assert.Equal(t, KV{"foo": "a"}, kv)
+	assert.Equal(t, KV{"foo": "a", "bar": "wat"}, kv2)
+
+	kv = Merge(
+		KV{"foo": "aaaaa"},
+		KV{"foo": "a", "bar": "bbbbb"},
+		KV{"bar": "b"},
+	)
+	assert.Equal(t, KV{"foo": "a", "bar": "b"}, kv)
+}
+
 func TestLLog(t *T) {
 	// Unfortunately due to the nature of the package all testing involving Out
 	// must be syncronously
@@ -68,19 +93,26 @@ func TestEntryPrintOut(t *T) {
 	}
 	assertEntry("INFO -- this is a test", e)
 
-	e.kv = KV{}
+	e.kv = kvNormalize(KV{})
 	assertEntry("INFO -- this is a test", e)
 
-	e.kv = KV{
+	e.kv = kvNormalize(KV{
 		"foo": "a",
-	}
+	})
 	assertEntry("INFO -- this is a test -- foo=\"a\"", e)
 
-	e.kv = KV{
+	e.kv = kvNormalize(KV{
 		"foo": "a",
-		"bar": "a",
-	}
-	assertEntry("INFO -- this is a test -- (foo|bar)=\"a\" (foo|bar)=\"a\"", e)
+		"bar": "b",
+	})
+	assertEntry("INFO -- this is a test -- bar=\"b\" foo=\"a\"", e)
+
+	e.kv = kvNormalize(
+		KV{"foo": "aaaaa"},
+		KV{"foo": "a"},
+		KV{"bar": "b"},
+	)
+	assertEntry("INFO -- this is a test -- bar=\"b\" foo=\"a\"", e)
 }
 
 func BenchmarkLLog(b *B) {
