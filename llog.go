@@ -116,6 +116,37 @@ func SetLevelFromString(ls string) error {
 // key/value pairs which can be different for every entry.
 type KV map[string]interface{}
 
+// Copy returns a copy of the KV being called on. This method will never return
+// nil
+func (kv KV) Copy() KV {
+	nkv := make(KV, len(kv))
+	for k, v := range kv {
+		nkv[k] = v
+	}
+	return nkv
+}
+
+// Merge takes in multiple KVs and returns a single KV which is the union of all
+// the passed in ones. Key/vals on the rightmost of the set take precedence over
+// conflicting ones to the left. This function will never return nil
+func Merge(kvs ...KV) KV {
+	kv := make(KV, len(kvs))
+	for i := range kvs {
+		for k, v := range kvs[i] {
+			kv[k] = v
+		}
+	}
+	return kv
+}
+
+// Set returns a copy of the KV being called on with the given key/val set on
+// it. The original KV is unaffected
+func (kv KV) Set(k string, v interface{}) KV {
+	nkv := kv.Copy()
+	nkv[k] = v
+	return nkv
+}
+
 type kvE struct {
 	K string
 	V interface{}
@@ -252,19 +283,16 @@ func init() {
 	}()
 }
 
-func kvNormalize(kv []KV) kvL {
-	if len(kv) > 0 {
-		return kvTo(kv[0])
-	}
-	return nil
+func kvNormalize(kvs ...KV) kvL {
+	return kvTo(Merge(kvs...))
 }
 
-func logEntry(l Level, msg string, kv []KV, blockCh chan struct{}) {
+func logEntry(l Level, msg string, kvs []KV, blockCh chan struct{}) {
 	if l >= GetLevel() {
 		entryCh <- entry{
 			level:   l,
 			msg:     msg,
-			kv:      kvNormalize(kv),
+			kv:      kvNormalize(kvs...),
 			blockCh: blockCh,
 		}
 	}
@@ -275,27 +303,32 @@ func logEntry(l Level, msg string, kv []KV, blockCh chan struct{}) {
 type LogFunc func(string, ...KV)
 
 // Debug writes a Debug message to Out, with an optional set of key/value pairs
+// which will be Merge'd together.
 func Debug(msg string, kv ...KV) {
 	logEntry(DebugLevel, msg, kv, nil)
 }
 
 // Info writes an Info message to Out, with an optional set of key/value pairs
+// which will be Merge'd together.
 func Info(msg string, kv ...KV) {
 	logEntry(InfoLevel, msg, kv, nil)
 }
 
 // Warn writes a Warn message to Out, with an optional set of key/value pairs
+// which will be Merge'd together.
 func Warn(msg string, kv ...KV) {
 	logEntry(WarnLevel, msg, kv, nil)
 }
 
 // Error writes an Error message to Out, with an optional set of key/value pairs
+// which will be Merge'd together.
 func Error(msg string, kv ...KV) {
 	logEntry(ErrorLevel, msg, kv, nil)
 }
 
-// Fatal writes a Fatal message to Out, with an optional set of key/value pairs.
-// Once written the process will be exited with an exit code of 1
+// Fatal writes a Fatal message to Out, with an optional set of key/value pairs
+// which will be Merge'd together. Once written the process will be exited with
+// an exit code of 1
 func Fatal(msg string, kv ...KV) {
 	blockCh := make(chan struct{})
 	logEntry(FatalLevel, msg, kv, blockCh)
