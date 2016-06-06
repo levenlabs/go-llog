@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"regexp"
 	. "testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +37,7 @@ func TestKV(t *T) {
 
 func TestLLog(t *T) {
 	// Unfortunately due to the nature of the package all testing involving Out
-	// must be syncronously
+	// must be syncronous
 	buf := bytes.NewBuffer(make([]byte, 0, 128))
 	Out = buf
 
@@ -53,7 +52,7 @@ func TestLLog(t *T) {
 	Info("bar")
 	Warn("baz")
 	Error("buz")
-	time.Sleep(100 * time.Millisecond)
+	Flush()
 	assertOut("~ INFO -- bar\n")
 	assertOut("~ WARN -- baz\n")
 	assertOut("~ ERROR -- buz\n")
@@ -63,7 +62,7 @@ func TestLLog(t *T) {
 	Info("bar")
 	Warn("baz")
 	Error("buz", KV{"a": "b"})
-	time.Sleep(100 * time.Millisecond)
+	Flush()
 	assertOut("~ WARN -- baz\n")
 	assertOut("~ ERROR -- buz -- a=\"b\"\n")
 }

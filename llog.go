@@ -242,45 +242,58 @@ type flusher interface {
 }
 
 var entryCh = make(chan entry)
+var flushCh = make(chan chan bool)
 
 func init() {
 	go func() {
-		for e := range entryCh {
-			err := e.printOut(Out, DisplayTimestamp)
+		for {
+			select {
+			case doneCh := <-flushCh:
+				flush()
+				close(doneCh)
+			case e := <-entryCh:
+				err := e.printOut(Out, DisplayTimestamp)
 
-			// If we couldn't write the entry to Out we write an error to that
-			// effect to Stdout, then try to write the original entry as well
-			if err != nil && Out != defaultOut {
-				erre := entry{
-					level: ErrorLevel,
-					msg:   "Could not write to error Out",
-					kv: kvTo(KV{
-						"err": err,
-					}),
+				// If we couldn't write the entry to Out we write an error to that
+				// effect to Stdout, then try to write the original entry as well
+				if err != nil && Out != defaultOut {
+					erre := entry{
+						level: ErrorLevel,
+						msg:   "Could not write to error Out",
+						kv: kvTo(KV{
+							"err": err,
+						}),
+					}
+					erre.printOut(defaultOut, DisplayTimestamp)
+					e.printOut(defaultOut, DisplayTimestamp)
 				}
-				erre.printOut(defaultOut, DisplayTimestamp)
-				e.printOut(defaultOut, DisplayTimestamp)
-			}
 
-			// If the error level is fatal this is the last entry we should ever
-			// write. We do want to attempt to flush Out though, in case it's
-			// buffered, otherwise exiting now will cause the fatal message to
-			// never be shown. We try to cast to either an interface with a Sync
-			// or a Flush command as a form of ghetto reflection, to see if the
-			// writer has either, and use one if found.
-			if e.level == FatalLevel {
-				if so, ok := Out.(syncer); ok {
-					so.Sync()
-				} else if fo, ok := Out.(flusher); ok {
-					fo.Flush()
+				// If the error level is fatal this is the last entry we should ever
+				// write. We do want to attempt to flush Out though, in case it's
+				// buffered, otherwise exiting now will cause the fatal message to
+				// never be shown.
+				if e.level == FatalLevel {
+					flush()
 				}
-			}
 
-			if e.blockCh != nil {
-				close(e.blockCh)
+				if e.blockCh != nil {
+					close(e.blockCh)
+				}
 			}
 		}
 	}()
+}
+
+// does a raw flush on Out. Shouldn't be called outside the main loop
+func flush() {
+	// We try to cast to either an interface with a Sync or a Flush command as a
+	// form of ghetto reflection, to see if the writer has either, and use one
+	// if found.
+	if so, ok := Out.(syncer); ok {
+		so.Sync()
+	} else if fo, ok := Out.(flusher); ok {
+		fo.Flush()
+	}
 }
 
 func kvNormalize(kvs ...KV) kvL {
@@ -334,4 +347,12 @@ func Fatal(msg string, kv ...KV) {
 	logEntry(FatalLevel, msg, kv, blockCh)
 	<-blockCh
 	os.Exit(1)
+}
+
+// Flush will attempts to flush any buffered data in Out. Will block until the
+// flushing has been completed
+func Flush() {
+	doneCh := make(chan bool)
+	flushCh <- doneCh
+	<-doneCh
 }
