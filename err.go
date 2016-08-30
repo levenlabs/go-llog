@@ -29,6 +29,6 @@ func getInnerKV(err error) KV {
 // automatically set the "err" field on that KV to as well.
 func ErrKV(err error) KV {
 	kv := getInnerKV(err)
-	kv["err"] = err
+	kv["err"] = err.Error()
 	return kv
 }
