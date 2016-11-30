@@ -10,6 +10,9 @@ const errKV errKVKey = 1
 // error already has a KV embedded in it then the returned error will have a
 // the merging of the two.
 func ErrWithKV(err error, kv KV) error {
+	if err == nil {
+		return nil
+	}
 	existingKV := errctx.Get(err, errKV)
 	if existingKV != nil {
 		kv = Merge(existingKV.(KV), kv)
