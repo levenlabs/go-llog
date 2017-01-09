@@ -8,18 +8,17 @@ import (
 
 type kvKey int
 
-// ErrWithKV embeds a KV into an error, returning a new error instance. If the
-// error already has a KV embedded in it then the returned error will have the
-// merging of the two.
-func ErrWithKV(err error, kv KV) error {
+// ErrWithKV embeds the merging of a set of KVs into an error, returning a new
+// error instance. If the error already has a KV embedded in it then the
+// returned error will have the merging of them all.
+func ErrWithKV(err error, kvs ...KV) error {
 	if err == nil {
 		return nil
 	}
+	kv := Merge(kvs...)
 	existingKV := errctx.Get(err, kvKey(0))
 	if existingKV != nil {
 		kv = Merge(existingKV.(KV), kv)
-	} else {
-		kv = kv.Copy()
 	}
 	return errctx.Set(err, kvKey(0), kv)
 }
@@ -41,12 +40,11 @@ func ErrKV(err error) KV {
 // CtxWithKV embeds a KV into a Context, returning a new Context instance. If
 // the Context already has a KV embedded in it then the returned error will have
 // the merging of the two.
-func CtxWithKV(ctx context.Context, kv KV) context.Context {
+func CtxWithKV(ctx context.Context, kvs ...KV) context.Context {
+	kv := Merge(kvs...)
 	existingKV := ctx.Value(kvKey(0))
 	if existingKV != nil {
 		kv = Merge(existingKV.(KV), kv)
-	} else {
-		kv = kv.Copy()
 	}
 	return context.WithValue(ctx, kvKey(0), kv)
 }
