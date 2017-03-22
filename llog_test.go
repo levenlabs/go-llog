@@ -92,25 +92,20 @@ func TestEntryPrintOut(t *T) {
 	}
 	assertEntry("INFO -- this is a test", e)
 
-	e.kv = kvNormalize(KV{})
+	e.kvSlice = KV{}.StringSlice()
 	assertEntry("INFO -- this is a test", e)
 
-	e.kv = kvNormalize(KV{
-		"foo": "a",
-	})
+	e.kvSlice = KV{"foo": "a"}.StringSlice()
 	assertEntry("INFO -- this is a test -- foo=\"a\"", e)
 
-	e.kv = kvNormalize(KV{
-		"foo": "a",
-		"bar": "b",
-	})
+	e.kvSlice = KV{"foo": "a", "bar": "b"}.StringSlice()
 	assertEntry("INFO -- this is a test -- bar=\"b\" foo=\"a\"", e)
 
-	e.kv = kvNormalize(
+	e.kvSlice = Merge(
 		KV{"foo": "aaaaa"},
 		KV{"foo": "a"},
 		KV{"bar": "b"},
-	)
+	).StringSlice()
 	assertEntry("INFO -- this is a test -- bar=\"b\" foo=\"a\"", e)
 }
 

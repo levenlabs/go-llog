@@ -17,8 +17,8 @@
 //
 // Examples:
 //
-//	Info("Something important has occured")
-//	Error("Could not open file", llog.KV{"filename": filename, "err": err})
+//	Info("Something important has occurred")
+//	Error("Could not open file", llog.KV{"filename": filename}, llog.ErrKV(err))
 //
 package llog
 
@@ -147,38 +147,30 @@ func (kv KV) Set(k string, v interface{}) KV {
 	return nkv
 }
 
-type kvE struct {
-	K string
-	V interface{}
-}
-
-type kvL []kvE
-
-func (l kvL) Len() int {
-	return len(l)
-}
-
-func (l kvL) Less(i, j int) bool {
-	return l[i].K < l[j].K
-}
-
-func (l kvL) Swap(i, j int) {
-	l[i], l[j] = l[j], l[i]
-}
-
-func kvTo(kv KV) kvL {
-	kvl := make(kvL, 0, len(kv))
-	for k, v := range kv {
-		kvl = append(kvl, kvE{K: k, V: v})
+// StringSlice converts the KV into a slice of [2]string entries (first index is
+// the key, second is the string form of the value).
+func (kv KV) StringSlice() [][2]string {
+	slice := make([][2]string, 0, len(kv))
+	for kstr, v := range kv {
+		vstr := fmt.Sprint(v)
+		// TODO this is only here because logstash is dumb and doesn't
+		// properly handle escaped quotes. Once
+		// https://github.com/elastic/logstash/issues/1645
+		// gets figured out this Replace can be removed
+		vstr = strings.Replace(vstr, `"`, `'`, -1)
+		vstr = strconv.QuoteToASCII(vstr)
+		slice = append(slice, [2]string{kstr, vstr})
 	}
-	sort.Sort(kvl)
-	return kvl
+	sort.Slice(slice, func(i, j int) bool {
+		return slice[i][0] < slice[j][0]
+	})
+	return slice
 }
 
 type entry struct {
 	level   Level
 	msg     string
-	kv      kvL
+	kvSlice [][2]string
 	blockCh chan struct{} // can be nil
 }
 
@@ -193,42 +185,33 @@ var (
 	newline        = []byte("\n")
 )
 
-func writeHelper(b []byte, w io.Writer, lastErr error) error {
-	if lastErr != nil {
-		return lastErr
-	}
-	_, lastErr = w.Write(b)
-	return lastErr
-}
-
 func (e entry) printOut(w io.Writer, displayTS bool) error {
 	var err error
-	err = writeHelper(prefix, w, err)
-	if displayTS {
-		err = writeHelper(tsPrefix, w, err)
-		err = writeHelper([]byte(time.Now().String()), w, err)
-		err = writeHelper(tsSuffix, w, err)
-	}
-	err = writeHelper([]byte(e.level.String()), w, err)
-	err = writeHelper(separatorSpace, w, err)
-	err = writeHelper([]byte(e.msg), w, err)
-	if len(e.kv) > 0 {
-		err = writeHelper(separator, w, err)
-		for _, kve := range e.kv {
-			err = writeHelper(space, w, err)
-			err = writeHelper([]byte(kve.K), w, err)
-			err = writeHelper(equals, w, err)
-			vstr := fmt.Sprint(kve.V)
-			// TODO this is only here because logstash is dumb and doesn't
-			// properly handle escaped quotes. Once
-			// https://github.com/elastic/logstash/issues/1645
-			// gets figured out this Replace can be removed
-			vstr = strings.Replace(vstr, `"`, `'`, -1)
-			vstr = strconv.QuoteToASCII(vstr)
-			err = writeHelper([]byte(vstr), w, err)
+	write := func(b []byte) {
+		if err == nil {
+			_, err = w.Write(b)
 		}
 	}
-	err = writeHelper(newline, w, err)
+
+	write(prefix)
+	if displayTS {
+		write(tsPrefix)
+		write([]byte(time.Now().String()))
+		write(tsSuffix)
+	}
+	write([]byte(e.level.String()))
+	write(separatorSpace)
+	write([]byte(e.msg))
+	if len(e.kvSlice) > 0 {
+		write(separator)
+		for _, kve := range e.kvSlice {
+			write(space)
+			write([]byte(kve[0]))
+			write(equals)
+			write([]byte(kve[1]))
+		}
+	}
+	write(newline)
 
 	return err
 }
@@ -258,11 +241,9 @@ func init() {
 				// effect to Stdout, then try to write the original entry as well
 				if err != nil && Out != defaultOut {
 					erre := entry{
-						level: ErrorLevel,
-						msg:   "Could not write to error Out",
-						kv: kvTo(KV{
-							"err": err,
-						}),
+						level:   ErrorLevel,
+						msg:     "Could not write to error Out",
+						kvSlice: ErrKV(err).StringSlice(),
 					}
 					erre.printOut(defaultOut, DisplayTimestamp)
 					e.printOut(defaultOut, DisplayTimestamp)
@@ -296,16 +277,12 @@ func flush() {
 	}
 }
 
-func kvNormalize(kvs ...KV) kvL {
-	return kvTo(Merge(kvs...))
-}
-
 func logEntry(l Level, msg string, kvs []KV, blockCh chan struct{}) {
 	if l >= GetLevel() {
 		entryCh <- entry{
 			level:   l,
 			msg:     msg,
-			kv:      kvNormalize(kvs...),
+			kvSlice: Merge(kvs...).StringSlice(),
 			blockCh: blockCh,
 		}
 	}
