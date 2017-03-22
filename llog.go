@@ -158,7 +158,6 @@ func (kv KV) StringSlice() [][2]string {
 		// https://github.com/elastic/logstash/issues/1645
 		// gets figured out this Replace can be removed
 		vstr = strings.Replace(vstr, `"`, `'`, -1)
-		vstr = strconv.QuoteToASCII(vstr)
 		slice = append(slice, [2]string{kstr, vstr})
 	}
 	sort.Slice(slice, func(i, j int) bool {
@@ -208,7 +207,7 @@ func (e entry) printOut(w io.Writer, displayTS bool) error {
 			write(space)
 			write([]byte(kve[0]))
 			write(equals)
-			write([]byte(kve[1]))
+			write([]byte(strconv.QuoteToASCII(kve[1])))
 		}
 	}
 	write(newline)
