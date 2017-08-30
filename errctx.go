@@ -27,8 +27,8 @@ func ErrWithKV(err error, kvs ...KV) error {
 // empty KV if no KV was previously embedded. Will automatically set the "err"
 // field on the returned KV as well.
 func ErrKV(err error) KV {
-	var kv KV
-	if kvi := errctx.Get(err, kvKey(0)); kvi == nil {
+	kvi := errctx.Get(err, kvKey(0))
+	if kvi == nil {
 		return KV{"err": err.Error()}
 	}
 	return kvi.(KV).Set("err", err.Error())
