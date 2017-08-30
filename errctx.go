@@ -29,12 +29,9 @@ func ErrWithKV(err error, kvs ...KV) error {
 func ErrKV(err error) KV {
 	var kv KV
 	if kvi := errctx.Get(err, kvKey(0)); kvi == nil {
-		kv = KV{}
-	} else {
-		kv = kvi.(KV)
+		return KV{"err": err.Error()}
 	}
-	kv["err"] = err.Error()
-	return kv
+	return kvi.(KV).Set("err", err.Error())
 }
 
 // CtxWithKV embeds a KV into a Context, returning a new Context instance. If
