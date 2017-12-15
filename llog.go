@@ -45,6 +45,16 @@ var defaultOut = os.Stdout
 // should only be changed before any logging occurs
 var DisplayTimestamp bool
 
+// Truncate is a helper function to truncate a string to a given size. It will
+// add 3 trailing elipses, so the returned string will be at most size+3
+// characters long
+func Truncate(s string, size int) string {
+	if len(s) <= size {
+		return s
+	}
+	return s[:size] + "..."
+}
+
 // Level describes the severity of a particular log message
 type Level int
 
