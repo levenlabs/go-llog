@@ -10,6 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTruncate(t *T) {
+	assert.Equal(t, "abc", Truncate("abc", 4))
+	assert.Equal(t, "abc", Truncate("abc", 3))
+	assert.Equal(t, "ab...", Truncate("abc", 2))
+}
+
 func TestKV(t *T) {
 	var kv KV
 	assert.NotNil(t, kv.Copy())
