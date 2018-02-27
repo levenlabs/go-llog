@@ -34,6 +34,9 @@ func TestErrKV(t *T) {
 	assert.Equal(t, KV{"err": err2.Error(), "a": "a"}, ErrKV(err2))
 	assert.Equal(t, KV{"err": err3.Error(), "a": "a", "b": "b"}, ErrKV(err3))
 	assert.Equal(t, KV{"err": err4.Error(), "a": "a", "b": "bb"}, ErrKV(err4))
+
+	err = nil
+	assert.Equal(t, KV{}, ErrKV(err))
 }
 
 func TestCtxKV(t *T) {
