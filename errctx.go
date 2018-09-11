@@ -3,7 +3,7 @@ package llog
 import (
 	"context"
 
-	"github.com/levenlabs/golib/errctx"
+	"github.com/levenlabs/errctx"
 )
 
 type kvKey int
