@@ -15,25 +15,25 @@ func TestErrKV(t *T) {
 	kv := KV{"a": "a"}
 	err2 := ErrWithKV(err, kv)
 	assert.Equal(t, KV{"err": err.Error()}, ErrKV(err))
-	assert.Equal(t, KV{"err": err2.Error(), "a": "a"}, ErrKV(err2))
+	assert.Equal(t, KV{"err": err2.Error(), "a": "a", "source": "errctx_test.go:16"}, ErrKV(err2))
 
 	// changing the kv now shouldn't do anything
 	kv["a"] = "b"
 	assert.Equal(t, KV{"err": err.Error()}, ErrKV(err))
-	assert.Equal(t, KV{"err": err2.Error(), "a": "a"}, ErrKV(err2))
+	assert.Equal(t, KV{"err": err2.Error(), "a": "a", "source": "errctx_test.go:16"}, ErrKV(err2))
 
 	// a new ErrWithKV shouldn't affect the previous one
 	err3 := ErrWithKV(err2, KV{"b": "b"})
 	assert.Equal(t, KV{"err": err.Error()}, ErrKV(err))
-	assert.Equal(t, KV{"err": err2.Error(), "a": "a"}, ErrKV(err2))
-	assert.Equal(t, KV{"err": err3.Error(), "a": "a", "b": "b"}, ErrKV(err3))
+	assert.Equal(t, KV{"err": err2.Error(), "a": "a", "source": "errctx_test.go:16"}, ErrKV(err2))
+	assert.Equal(t, KV{"err": err3.Error(), "a": "a", "b": "b", "source": "errctx_test.go:16"}, ErrKV(err3))
 
 	// make sure precedence works
 	err4 := ErrWithKV(err3, KV{"b": "bb"})
 	assert.Equal(t, KV{"err": err.Error()}, ErrKV(err))
-	assert.Equal(t, KV{"err": err2.Error(), "a": "a"}, ErrKV(err2))
-	assert.Equal(t, KV{"err": err3.Error(), "a": "a", "b": "b"}, ErrKV(err3))
-	assert.Equal(t, KV{"err": err4.Error(), "a": "a", "b": "bb"}, ErrKV(err4))
+	assert.Equal(t, KV{"err": err2.Error(), "a": "a", "source": "errctx_test.go:16"}, ErrKV(err2))
+	assert.Equal(t, KV{"err": err3.Error(), "a": "a", "b": "b", "source": "errctx_test.go:16"}, ErrKV(err3))
+	assert.Equal(t, KV{"err": err4.Error(), "a": "a", "b": "bb", "source": "errctx_test.go:16"}, ErrKV(err4))
 
 	err = nil
 	assert.Equal(t, KV{}, ErrKV(err))
