@@ -38,3 +38,16 @@ These will output:
 ~ INFO -- Here's a generic log message!
 ~ ERROR -- an error happened -- userID="1111" err="some error" sky="blue"
 ```
+
+## log.Logger
+
+If you need a `log.Logger` interface you can use `NewLogger(level, KV)` and
+it will take each string sent to the Logger interface and log it via the
+default llog instance with the sent level and with the sent KV.
+
+You can also send filter functions into `NewLogger` if you wish to filter out
+spammy or annoying log messages.
+
+Once https://github.com/golang/go/issues/13182 is resolved and there is a
+better interface we expect that the above solution would be depreated in
+favor of the new interface.

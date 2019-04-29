@@ -122,6 +122,23 @@ func SetLevelFromString(ls string) error {
 	return nil
 }
 
+func logFuncFromLevel(l Level) LogFunc {
+	switch l {
+	case DebugLevel:
+		return Debug
+	case InfoLevel:
+		return Info
+	case WarnLevel:
+		return Warn
+	case ErrorLevel:
+		return Error
+	case FatalLevel:
+		return Fatal
+	default:
+		panic(fmt.Errorf("unknown log level %q", l))
+	}
+}
+
 // KV is used to provide context to a log entry in the form of a dynamic set of
 // key/value pairs which can be different for every entry.
 type KV map[string]interface{}
