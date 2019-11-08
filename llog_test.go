@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"io/ioutil"
 	"regexp"
+	"sync/atomic"
 	. "testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -113,6 +115,41 @@ func TestEntryPrintOut(t *T) {
 		KV{"bar": "b"},
 	).StringSlice()
 	assertEntry("INFO -- this is a test -- bar=\"b\" foo=\"a\"", e)
+}
+
+type sleepingWriter chan bool
+
+// Write implements the io.Writer interface and sleeps until the underlying
+// channel is closed
+func (ch sleepingWriter) Write(p []byte) (n int, err error) {
+	<-ch
+	return len(p), nil
+}
+
+func TestBlocking(t *T) {
+	oldOut := Out
+	defer func() {
+		Out = oldOut
+	}()
+
+	sleep := make(chan bool)
+	Out = sleepingWriter(sleep)
+
+	SetLevelFromString("INFO")
+	var done int64
+	go func() {
+		logEntry(InfoLevel, "test", nil, true)
+		atomic.AddInt64(&done, 1)
+	}()
+
+	// make sure it hasn't returned yet
+	time.Sleep(10 * time.Millisecond)
+	assert.Zero(t, atomic.LoadInt64(&done))
+
+	// now make sure it has
+	close(sleep)
+	time.Sleep(10 * time.Millisecond)
+	assert.NotZero(t, atomic.LoadInt64(&done))
 }
 
 func BenchmarkLLog(b *B) {
