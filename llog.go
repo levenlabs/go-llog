@@ -40,6 +40,11 @@ import (
 var Out io.Writer = os.Stdout
 var defaultOut = os.Stdout
 
+// BlockByDefault controls whether the non-Fatal functions wait for the write
+// to Out to complete. This can be useful to set to true for tests so that
+// logging doesn't end up mangling test output.
+var BlockByDefault = false
+
 // DisplayTimestamp determines whether or not a timestamp is displayed in the
 // log messages. By default one is not displayed. This can be changed by it
 // should only be changed before any logging occurs
@@ -303,14 +308,22 @@ func flush() {
 	}
 }
 
-func logEntry(l Level, msg string, kvs []KV, blockCh chan struct{}) {
-	if l >= GetLevel() {
-		entryCh <- entry{
-			level:   l,
-			msg:     msg,
-			kvSlice: Merge(kvs...).StringSlice(),
-			blockCh: blockCh,
-		}
+func logEntry(l Level, msg string, kvs []KV, block bool) {
+	if l < GetLevel() {
+		return
+	}
+	var blockCh chan struct{}
+	if block {
+		blockCh = make(chan struct{})
+		defer func() {
+			<-blockCh
+		}()
+	}
+	entryCh <- entry{
+		level:   l,
+		msg:     msg,
+		kvSlice: Merge(kvs...).StringSlice(),
+		blockCh: blockCh,
 	}
 }
 
@@ -321,34 +334,32 @@ type LogFunc func(string, ...KV)
 // Debug writes a Debug message to Out, with an optional set of key/value pairs
 // which will be Merge'd together.
 func Debug(msg string, kv ...KV) {
-	logEntry(DebugLevel, msg, kv, nil)
+	logEntry(DebugLevel, msg, kv, BlockByDefault)
 }
 
 // Info writes an Info message to Out, with an optional set of key/value pairs
 // which will be Merge'd together.
 func Info(msg string, kv ...KV) {
-	logEntry(InfoLevel, msg, kv, nil)
+	logEntry(InfoLevel, msg, kv, BlockByDefault)
 }
 
 // Warn writes a Warn message to Out, with an optional set of key/value pairs
 // which will be Merge'd together.
 func Warn(msg string, kv ...KV) {
-	logEntry(WarnLevel, msg, kv, nil)
+	logEntry(WarnLevel, msg, kv, BlockByDefault)
 }
 
 // Error writes an Error message to Out, with an optional set of key/value pairs
 // which will be Merge'd together.
 func Error(msg string, kv ...KV) {
-	logEntry(ErrorLevel, msg, kv, nil)
+	logEntry(ErrorLevel, msg, kv, BlockByDefault)
 }
 
 // Fatal writes a Fatal message to Out, with an optional set of key/value pairs
 // which will be Merge'd together. Once written the process will be exited with
 // an exit code of 1
 func Fatal(msg string, kv ...KV) {
-	blockCh := make(chan struct{})
-	logEntry(FatalLevel, msg, kv, blockCh)
-	<-blockCh
+	logEntry(FatalLevel, msg, kv, true)
 	os.Exit(1)
 }
 

@@ -16,7 +16,7 @@ then provided in the form of optional key/value pairs, which can then be easily
 parsed by something like elk.
 
 The benefits of this system is that it makes it very easy to categorize
-messages, and also very easy to scan *all* messages across services for a
+messages, and also very easy to scan _all_ messages across services for a
 particular pattern. For instance, if you always include the IP address in the
 key/value set across all projects, you can very easily determine all the actions
 taken by a particular IP address.
@@ -51,3 +51,10 @@ spammy or annoying log messages.
 Once https://github.com/golang/go/issues/13182 is resolved and there is a
 better interface we expect that the above solution would be depreated in
 favor of the new interface.
+
+## Tests
+
+If you have logging output during tests, the asynchronous nature of the logging
+might end up mangling the "--- PASS: Function" output which could cause CI
+parsing to think a test failed. You should set `BlockByDefault` to true during
+tests if that is affecting you.
