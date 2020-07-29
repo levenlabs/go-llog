@@ -1,6 +1,7 @@
 package llog
 
 import (
+	"io"
 	"log"
 	"strings"
 )
@@ -41,10 +42,21 @@ func NewLogger(lvl Level, kv KV, filters ...func(string) (string, error)) *log.L
 }
 
 func newErrorLogger(fn LogFunc, kv KV, filters []func(string) (string, error)) *log.Logger {
-	w := llogWriter{
+	return log.New(newWriter(fn, kv, filters...), "", 0)
+}
+
+// NewWriter returns an io.Writer that uses llog to log the sent writes with the
+// sent log level. Multiple filter functions can be passed. If an error is
+// returned from the filter function, it's sent to the caller of the Write
+// method. If an empty string is returned then the message is ignored.
+func NewWriter(lvl Level, kv KV, filters ...func(string) (string, error)) io.Writer {
+	return newWriter(logFuncFromLevel(lvl), kv, filters...)
+}
+
+func newWriter(fn LogFunc, kv KV, filters ...func(string) (string, error)) io.Writer {
+	return &llogWriter{
 		fn:      fn,
 		kv:      kv,
 		filters: filters,
 	}
-	return log.New(&w, "", 0)
 }
