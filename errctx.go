@@ -44,8 +44,8 @@ func ErrKV(err error) KV {
 }
 
 // CtxWithKV embeds a KV into a Context, returning a new Context instance. If
-// the Context already has a KV embedded in it then the returned error will have
-// the merging of the two.
+// the Context already has a KV embedded in it then the returned context's KV
+// will be the merging of the two.
 func CtxWithKV(ctx context.Context, kvs ...KV) context.Context {
 	kv := Merge(kvs...)
 	existingKV := ctx.Value(kvKey(0))
