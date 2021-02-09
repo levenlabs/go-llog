@@ -199,10 +199,10 @@ func (kv KV) StringSlice() [][2]string {
 }
 
 type entry struct {
-	level   Level
+	blockCh chan struct{} // can be nil
 	msg     string
 	kvSlice [][2]string
-	blockCh chan struct{} // can be nil
+	level   Level
 }
 
 var (
