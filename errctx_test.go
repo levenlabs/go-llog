@@ -10,30 +10,40 @@ import (
 
 func TestErrKV(t *T) {
 	err := errors.New("foo")
-	assert.Equal(t, KV{"err": err.Error()}, ErrKV(err))
+	assert.Equal(t, KV{"err": err.Error(), "errType": "*errors.errorString"}, ErrKV(err))
 
 	kv := KV{"a": "a"}
 	err2 := ErrWithKV(err, kv)
-	assert.Equal(t, KV{"err": err.Error()}, ErrKV(err))
-	assert.Equal(t, KV{"err": err2.Error(), "a": "a", "source": "errctx_test.go:16"}, ErrKV(err2))
+	assert.Equal(t, KV{"err": err.Error(), "errType": "*errors.errorString"}, ErrKV(err))
+	assert.Equal(t, KV{"err": err2.Error(), "errType": "*errors.errorString", "a": "a", "source": "errctx_test.go:16"}, ErrKV(err2))
 
 	// changing the kv now shouldn't do anything
 	kv["a"] = "b"
-	assert.Equal(t, KV{"err": err.Error()}, ErrKV(err))
-	assert.Equal(t, KV{"err": err2.Error(), "a": "a", "source": "errctx_test.go:16"}, ErrKV(err2))
+	assert.Equal(t, KV{"err": err.Error(), "errType": "*errors.errorString"}, ErrKV(err))
+	assert.Equal(t, KV{"err": err2.Error(), "errType": "*errors.errorString", "a": "a", "source": "errctx_test.go:16"}, ErrKV(err2))
 
 	// a new ErrWithKV shouldn't affect the previous one
 	err3 := ErrWithKV(err2, KV{"b": "b"})
-	assert.Equal(t, KV{"err": err.Error()}, ErrKV(err))
-	assert.Equal(t, KV{"err": err2.Error(), "a": "a", "source": "errctx_test.go:16"}, ErrKV(err2))
-	assert.Equal(t, KV{"err": err3.Error(), "a": "a", "b": "b", "source": "errctx_test.go:16"}, ErrKV(err3))
+	assert.Equal(t, KV{"err": err.Error(), "errType": "*errors.errorString"}, ErrKV(err))
+	assert.Equal(t, KV{"err": err2.Error(), "errType": "*errors.errorString", "a": "a", "source": "errctx_test.go:16"}, ErrKV(err2))
+	assert.Equal(t, KV{"err": err3.Error(), "errType": "*errors.errorString", "a": "a", "b": "b", "source": "errctx_test.go:16"}, ErrKV(err3))
 
 	// make sure precedence works
 	err4 := ErrWithKV(err3, KV{"b": "bb"})
-	assert.Equal(t, KV{"err": err.Error()}, ErrKV(err))
-	assert.Equal(t, KV{"err": err2.Error(), "a": "a", "source": "errctx_test.go:16"}, ErrKV(err2))
-	assert.Equal(t, KV{"err": err3.Error(), "a": "a", "b": "b", "source": "errctx_test.go:16"}, ErrKV(err3))
-	assert.Equal(t, KV{"err": err4.Error(), "a": "a", "b": "bb", "source": "errctx_test.go:16"}, ErrKV(err4))
+	assert.Equal(t, KV{"err": err.Error(), "errType": "*errors.errorString"}, ErrKV(err))
+	assert.Equal(t, KV{"err": err2.Error(), "errType": "*errors.errorString", "a": "a", "source": "errctx_test.go:16"}, ErrKV(err2))
+	assert.Equal(t, KV{"err": err3.Error(), "errType": "*errors.errorString", "a": "a", "b": "b", "source": "errctx_test.go:16"}, ErrKV(err3))
+	assert.Equal(t, KV{"err": err4.Error(), "errType": "*errors.errorString", "a": "a", "b": "bb", "source": "errctx_test.go:16"}, ErrKV(err4))
+
+	// empty error from errors.New("")
+	errEmpty := errors.New("")
+	assert.Equal(t, KV{"err": "&errors.errorString{s:\"\"}", "errType": "*errors.errorString"}, ErrKV(errEmpty))
+
+	// custom empty error
+	assert.Equal(t, KV{"err": "llog.emptyErr{}", "errType": "llog.emptyErr"}, ErrKV(emptyErr{}))
+
+	// custom empty error with String()
+	assert.Equal(t, KV{"err": "stringer", "errType": "llog.stringerErr"}, ErrKV(stringerErr{}))
 
 	err = nil
 	assert.Equal(t, KV{}, ErrKV(err))
@@ -66,3 +76,12 @@ func TestCtxKV(t *T) {
 	assert.Equal(t, KV{"a": "a", "b": "b"}, CtxKV(ctx3))
 	assert.Equal(t, KV{"a": "a", "b": "bb"}, CtxKV(ctx4))
 }
+
+type emptyErr struct{}
+
+func (e emptyErr) Error() string { return "" }
+
+type stringerErr struct{}
+
+func (e stringerErr) Error() string  { return "" }
+func (e stringerErr) String() string { return "stringer" }

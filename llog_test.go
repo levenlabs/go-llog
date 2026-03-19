@@ -45,7 +45,7 @@ func TestKV(t *T) {
 
 func TestLLog(t *T) {
 	// Unfortunately due to the nature of the package all testing involving Out
-	// must be syncronous
+	// must be synchronous
 	buf := bytes.NewBuffer(make([]byte, 0, 128))
 	Out = buf
 

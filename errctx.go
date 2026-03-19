@@ -2,6 +2,7 @@ package llog
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/levenlabs/errctx"
 )
@@ -32,15 +33,37 @@ func ErrKV(err error) KV {
 	if err == nil {
 		return KV{}
 	}
+	var kv KV
 	kvi := errctx.Get(err, kvKey(0))
-	if kvi == nil {
-		kvi = KV{}
+	if kvi != nil {
+		kv = kvi.(KV)
 	}
-	kv := kvi.(KV).Set("err", err.Error())
+	// look at the base in case it's already an errctx just so we don't end up
+	// showing the errType as errctx.errctx all the time
+	errBase := errctx.Base(err)
+	errStr := errBase.Error()
+	// try to better handle empty errors
+	if errStr == "" {
+		// if the error is a stringer, try to get the string from that
+		if stringer, ok := errBase.(fmt.Stringer); ok {
+			errStr = stringer.String()
+		}
+		// otherwise fallback to printing the go representation
+		if errStr == "" {
+			errStr = fmt.Sprintf("%#v", errBase)
+		}
+	}
+	newKV := KV{
+		"err":     errStr,
+		"errType": fmt.Sprintf("%T", errBase),
+	}
 	if line, ok := errctx.Line(err); ok && kv["source"] == nil {
-		kv = kv.Set("source", line)
+		newKV["source"] = line
 	}
-	return kv
+	if kv == nil {
+		return newKV
+	}
+	return Merge(kv, newKV)
 }
 
 // CtxWithKV embeds a KV into a Context, returning a new Context instance. If
